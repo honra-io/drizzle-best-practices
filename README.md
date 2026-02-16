@@ -4,6 +4,16 @@ AI-agent-ready best practices for [Drizzle ORM](https://orm.drizzle.team/) with 
 
 Inspired by [Supabase Agent Skills](https://github.com/supabase/agent-skills).
 
+## Installation
+
+Install the skill using the [skills](https://skills.sh) CLI:
+
+```bash
+npx skills add honra-io/drizzle-best-practices
+```
+
+This makes the Drizzle best practices available to your AI agent (Claude Code, Cursor, Gemini, Kiro, OpenCode, GitHub Copilot, and others).
+
 ## What's Inside
 
 The skill is organized into 8 priority-ranked categories, each with detailed reference files containing explanations, correct vs incorrect code examples, and links to official docs.
