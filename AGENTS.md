@@ -75,6 +75,7 @@ references/migrations-config.md
 references/migrations-workflow.md
 references/types-inference.md
 references/types-custom-types.md
+references/types-validators.md
 references/perf-prepared-statements.md
 references/perf-batch-operations.md
 references/driver-postgres.md

@@ -4,10 +4,11 @@
 
 Relations let you describe how tables connect to each other. Once defined, you can use
 the relational query API (`db.query`) to fetch nested data without writing manual joins.
-Drizzle supports two relation APIs — the modern `defineRelations` (v2) and the legacy
-`relations()` helper. New projects should use `defineRelations`.
+Drizzle supports two relation APIs — the modern `defineRelations` (RQB v2, the default in
+Drizzle v1) and the legacy `relations()` helper (Drizzle 0.45.x). New projects on `@rc` should
+use `defineRelations`.
 
-## Relations v2 (`defineRelations`) — Recommended
+## Relations v2 (`defineRelations`) — Recommended (Drizzle v1)
 
 ```typescript
 import { defineRelations } from 'drizzle-orm';
@@ -60,6 +61,8 @@ const db = drizzle({ client: pool, relations });
 Still works and widely used in existing projects:
 
 ```typescript
+// Drizzle 0.45.x: import from 'drizzle-orm'
+// Drizzle v1 (if you keep the legacy API): import from 'drizzle-orm/_relations'
 import { relations } from 'drizzle-orm';
 
 export const usersRelations = relations(users, ({ one, many }) => ({
@@ -85,12 +88,34 @@ import * as schema from './schema';
 const db = drizzle({ schema });
 ```
 
-## Many-to-Many Relations
-
-Many-to-many requires an explicit junction table:
+**Migrating from 0.45.x to v1.** On Drizzle v1 the relational query API (`db.query`) is driven by
+the `defineRelations` object you pass to `drizzle()`. Passing a legacy `schema` (with `relations()`
+helpers) does *not* populate `db.query` — verified empirically against `drizzle-orm@1.0.0-rc.3`:
 
 ```typescript
-// Schema
+// ✅ v1: relational queries require defineRelations passed as `relations`
+import { relations } from './relations'; // export const relations = defineRelations(...)
+const db = drizzle(process.env.DATABASE_URL!, { relations });
+await db.query.users.findMany({ with: { posts: true } });
+
+// ⚠️ v1: the legacy relations() helper still imports from drizzle-orm/_relations
+// (so old definition files keep compiling), but passing it via `schema` does NOT
+// enable db.query. Convert relation definitions to defineRelations to query relationally.
+import { relations } from 'drizzle-orm/_relations';
+```
+
+> Some v1 beta docs describe a `db._query` path for running legacy relational queries side by side
+> with the new API. That path was **removed before `1.0.0-rc.3`** — there is no `db._query`. Don't
+> rely on it; migrate definitions to `defineRelations`.
+
+## Many-to-Many Relations
+
+You still need the junction table in your schema, but in v1 you no longer query *through* it.
+Use `.through()` to point both sides of the `many` relation at the junction columns, and Drizzle
+collapses the join for you:
+
+```typescript
+// Schema — junction table
 export const usersToGroups = pgTable(
   'users_to_groups',
   {
@@ -100,36 +125,47 @@ export const usersToGroups = pgTable(
   (t) => [primaryKey({ columns: [t.userId, t.groupId] })]
 );
 
-// Relations v2
+// Relations v2 — define the many-to-many directly with .through()
 export const relations = defineRelations(schema, (r) => ({
   users: {
-    usersToGroups: r.many.usersToGroups(),
+    groups: r.many.groups({
+      from: r.users.id.through(r.usersToGroups.userId),
+      to: r.groups.id.through(r.usersToGroups.groupId),
+    }),
   },
   groups: {
-    usersToGroups: r.many.usersToGroups(),
-  },
-  usersToGroups: {
-    user: r.one.users({
-      from: r.usersToGroups.userId,
-      to: r.users.id,
-    }),
-    group: r.one.groups({
-      from: r.usersToGroups.groupId,
-      to: r.groups.id,
-    }),
+    users: r.many.users(), // reverse side; the through mapping is inferred
   },
 }));
 ```
 
-### Querying through the junction table
+### Querying — no junction in the query
 
 ```typescript
 const usersWithGroups = await db.query.users.findMany({
   with: {
+    groups: true, // junction table is collapsed automatically
+  },
+});
+// [{ id: 1, name: "Alice", groups: [{ id: 7, name: "Admins" }] }]
+```
+
+### Legacy (v0.45.x): query through the junction table
+
+Before v1's `.through()`, you defined a `many` to the junction on each side and traversed it
+explicitly in the query, mapping the rows out yourself:
+
+```typescript
+// Legacy v0.45.x
+export const usersRelations = relations(users, ({ many }) => ({
+  usersToGroups: many(usersToGroups),
+}));
+// ...
+const usersWithGroups = await db.query.users.findMany({
+  with: {
     usersToGroups: {
-      with: {
-        group: true,
-      },
+      columns: {},
+      with: { group: true },
     },
   },
 });

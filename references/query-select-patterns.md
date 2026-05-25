@@ -74,17 +74,22 @@ const result = await db
 
 ### findFirst — single record with a condition
 
+In Drizzle v1, the relational API takes object-syntax `where`/`orderBy` (see
+`relations-querying.md`):
+
 ```typescript
 const user = await db.query.users.findFirst({
-  where: eq(usersTable.id, 1),
+  where: { id: 1 },
   with: {
     posts: {
       limit: 5,
-      orderBy: postsTable.createdAt,
+      orderBy: { createdAt: 'asc' },
     },
   },
 });
 ```
+
+On 0.45.x this is `where: eq(usersTable.id, 1)` and `orderBy: postsTable.createdAt`.
 
 ### Partial Select in Relational Queries
 

@@ -105,6 +105,16 @@ npx drizzle-kit up
 
 Upgrades your migration folder to the latest format when Drizzle Kit introduces changes.
 
+**Drizzle v1 changed the migration folder format.** When you move a project from 0.45.x to
+`drizzle-kit@rc`, run `drizzle-kit up` once to convert the existing folder. v1:
+
+- removes the top-level `journal.json` (it was a frequent source of merge conflicts),
+- groups each migration's SQL file and snapshot into its own folder, and
+- **removes the `drizzle-kit drop` command** — to drop or fix a conflicted migration you now
+  delete its folder and regenerate.
+
+Commit the converted folder as part of the upgrade.
+
 ## Applying Migrations in Code
 
 For programmatic migration execution (e.g., in a deploy script or serverless function):
